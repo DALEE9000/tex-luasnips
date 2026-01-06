@@ -274,7 +274,7 @@ s({ trig = "enum", snippetType = "snippet", desc = "enumerate" },
 			\begin{enumerate}[label=(\alph*)]
 				\item <>
 				\item <>
-			\end{itemize}
+			\end{enumerate}
 		]],
 		{i(1), i(2)}
 	)
@@ -284,10 +284,10 @@ s({ trig = "enum", snippetType = "snippet", desc = "enumerate" },
 s({ trig = "ali", snippetType = "snippet", desc = "align" },
 	fmta(
 		[[
-			\begin{align}
-				<> & <> \\
+			\begin{align*}
+				<> & <> \\[12pt]
 				<> & <> \\ <>
-			\end{align}
+			\end{align*}
 		]],
 		{i(1), i(2), i(3), i(4), i(5)}
 	)
@@ -297,12 +297,12 @@ s({ trig = "ali", snippetType = "snippet", desc = "align" },
 s({ trig = "aliat", snippetType = "snippet", desc = "align at" },
 	fmta(
 		[[
-			\begin{alignat*}
+			\begin{alignat*}{<>}
 				<> && <> & <> \\
 				<> && <> & <> \\ <>
 			\end{alignat*}
 		]],
-		{i(1), i(2), i(3), i(4), i(5), i(6), i(7)}
+		{i(1), i(2), i(3), i(4), i(5), i(6), i(7), i(8)}
 	)
 ),
 
@@ -428,6 +428,9 @@ s({trig="txt", snippetType="snippet", desc="text"},
 		{visual_body(1)}
 	)
 ),
+-- visual_body(i) includes highlighted text (in visual mode) into the snippet. But we should have an option for triggering 'txt' and directly writing in text.
+--
+-- To activate: visual select (highlight) the text, press <TAB>, and then type the trigger
 
 -- Boldface
 s({trig="bf", snippetType="snippet", desc="boldface"},
@@ -580,7 +583,7 @@ s({trig="bra", snippetType="snippet", desc="Brackets"},
 s({trig="squig", snippetType="snippet", desc="Squiggly Brackets"},
 	fmta(	
 		[[
-			\!\left\\{ <> \right\\}
+			\!\left\{ <> \right\}
 		]],
 		{i(1)}
 	)
@@ -736,7 +739,7 @@ s({trig="compl", snippetType="snippet", desc="Complement",wordTrig=false},
 ),
 
 -- Superscript
-s({trig="ss", snippetType="snippet", desc="Superscript"}, 
+s({trig=";ss", snippetType="autosnippet", desc="Superscript", wordTrig=false}, 
 	fmta(
 		[[
 			^{<>}
@@ -746,7 +749,7 @@ s({trig="ss", snippetType="snippet", desc="Superscript"},
 ),
 
 -- Subscript
-s({trig="sb", snippetType="snippet", desc="Subscript"}, 
+s({trig=";sb", snippetType="autosnippet", desc="Subscript", wordTrig=false}, 
 	fmta(
 		[[
 			_{<>}
@@ -910,9 +913,44 @@ s({trig="xx", snippetType="snippet", desc="Cross",wordTrig=false},
     {t("\\times"),}
 ),
 
--- The functions
+-- sin
+s({trig="sin", snippetType="snippet", desc="sine",wordTrig=false},
+    c(1,
+    	{
+    	sn(nil, fmta([[ \sin\!\left(<>\right) ]],{i(1)})),
+	sn(nil, fmta([[ \sin^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
+	}
+    )
+),
 
+-- cos 
+s({trig="cos", snippetType="snippet", desc="cosine",wordTrig=false},
+    c(1,
+    	{
+    	sn(nil, fmta([[ \cos\!\left(<>\right) ]],{i(1)})),
+	sn(nil, fmta([[ \cos^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
+	}
+    )
+),
 
+-- tan
+s({trig="tan", snippetType="snippet", desc="tangent",wordTrig=false},
+    c(1,
+    	{
+    	sn(nil, fmta([[ \tan\!\left(<>\right) ]],{i(1)})),
+	sn(nil, fmta([[ \tan^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
+	}
+    )
+),
+
+-- ln
+s({trig="ln", snippetType="snippet", desc="natural logarithm",wordTrig=false},
+    	fmta(
+		[[ 
+			\ln\!\left(<>\right) 
+		]],
+	{i(1)})
+),
 
 -- Maps To
 s({trig="!>", snippetType="snippet", desc="Maps to",wordTrig=false},
@@ -922,6 +960,11 @@ s({trig="!>", snippetType="snippet", desc="Maps to",wordTrig=false},
 -- Sim 
 s({trig="sim", snippetType="snippet", desc="Sim",wordTrig=false},
     {t("\\sim"),}
+),
+
+-- Approx
+s({trig="approx", snippetType="snippet", desc="Approximately",wordTrig=false},
+    {t("\\approx"),}
 ),
 
 -- Vbar
@@ -1001,6 +1044,16 @@ s({trig="int", snippetType="snippet", desc="Integral"},
 				sn(nil, fmta([[ \int_{<>}^{<>} <> \, d<> ]],{i(1),i(2),i(3),i(4)}))
 				}
 			)
+),
+
+-- Integration bounds
+s({trig="intb", snippetType="snippet", desc="Integral bounds"},
+	fmta(
+		[[
+			\Big|^{<>}_{<>}
+		]],
+		{i(1),i(2)}
+	)
 ),
 
 -- Gradient
@@ -1331,7 +1384,7 @@ s({trig="om", snippetType="snippet", desc="omega",wordTrig=false},
 ),
 
 s({trig="Om", snippetType="snippet", desc="Omega",wordTrig=false},
-    {t("\\0mega"),}
+    {t("\\Omega"),}
 ),
 
 s({trig="lam", snippetType="snippet", desc="lambda",wordTrig=false},
