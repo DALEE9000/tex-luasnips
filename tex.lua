@@ -41,11 +41,10 @@ local generate_matrix = function(args, snip)
 			table.insert(nodes, r(ins_indx, tostring(j) .. "x" .. tostring(k), i(1)))
 			ins_indx = ins_indx + 1
 		end
-		table.insert(nodes, t({ "\\\\", "" }))
-		table.insert(nodes, t({ indent }))
+		if j < rows then
+			table.insert(nodes, t({ "\\\\", indent }))
+		end
 	end
-	-- fix last node.
-	nodes[#nodes] = t("\\\\")
 	return sn(nil, nodes)
 end
 
@@ -79,6 +78,66 @@ local generate_table = function(args, snip)
 	return sn(nil, nodes)
 end
 
+-- Helper for formatted table: doubled header rules, vertical-centering struts
+local generate_fmt_table = function(args, snip)
+	local rows = tonumber(snip.captures[1])
+	local cols = tonumber(snip.captures[2])
+	local nodes = {}
+	local ins_indx = 1
+	local indent = "\t\t"
+	local strut = "\\rule[-1.2em]{0pt}{3em}"
+
+	table.insert(nodes, t("\\hline"))
+	table.insert(nodes, t({ "", indent .. strut })) -- header strut
+	table.insert(nodes, t({ "", indent }))
+
+	for j = 1, rows do
+		-- on rows after the first, the strut was already emitted by the
+		-- previous iteration's hline block, so only emit it here for j == 1
+		if j > 1 then
+			table.insert(nodes, t(indent))
+		end
+
+		table.insert(nodes, r(ins_indx, tostring(j) .. "x1", i(1)))
+		ins_indx = ins_indx + 1
+		for k = 2, cols do
+			table.insert(nodes, t(" & "))
+			table.insert(nodes, r(ins_indx, tostring(j) .. "x" .. tostring(k), i(1)))
+			ins_indx = ins_indx + 1
+		end
+		table.insert(nodes, t({ " \\\\" }))
+
+		if j == 1 then
+			-- doubled rule after the header row, plus a strut for row 2
+			table.insert(nodes, t({ "", indent .. "\\hline\\hline" }))
+			table.insert(nodes, t({ "", indent .. strut }))
+			table.insert(nodes, t({ "", indent }))
+		elseif j < rows then
+			table.insert(nodes, t({ "", indent .. "\\hline" }))
+			table.insert(nodes, t({ "", indent .. strut }))
+			table.insert(nodes, t({ "", indent }))
+		else
+			-- last row: closing rule, no trailing strut
+			table.insert(nodes, t({ "", indent .. "\\hline" }))
+		end
+	end
+
+	return sn(nil, nodes)
+end
+
+-- Helper for trigonometric functions 
+-- Factory for trig-style functions: plain, squared, and n-power variants
+local function trig_snip(name, desc)
+  local cmd = "\\" .. name
+  return s({trig = name, snippetType = "snippet", desc = desc, wordTrig = false},
+    c(1, {
+      sn(nil, fmta(cmd .. [[\!\left(<>\right)]],       { i(1) })),        -- \sin(x)
+      sn(nil, fmta(cmd .. [[^{2}\!\left(<>\right)]],   { i(1) })),        -- \sin^2(x)
+      sn(nil, fmta(cmd .. [[^{<>}\!\left(<>\right)]],  { i(1), i(2) })),  -- \sin^n(x)
+    })
+  )
+end
+
 return {
 
 -----------------
@@ -96,12 +155,12 @@ s({trig="ds", snippetType="snippet", desc="Display style"},
 ),
 
 -- quad
-s({trig="q", snippetType="snippet", desc="quad spacing",wordTrig=false},
+s({trig="q1", snippetType="snippet", desc="quad spacing",wordTrig=false},
 	{t("\\quad"),}
 ),
 
 -- qquad
-s({trig="qq", snippetType="snippet", desc="qquad spacing",wordTrig=false},
+s({trig="q2", snippetType="snippet", desc="qquad spacing",wordTrig=false},
 	{t("\\qquad"),}
 ),
 
@@ -285,7 +344,7 @@ s({ trig = "ali", snippetType = "snippet", desc = "align" },
 	fmta(
 		[[
 			\begin{align*}
-				<> & <> \\[12pt]
+				<> & <> \\
 				<> & <> \\ <>
 			\end{align*}
 		]],
@@ -355,6 +414,29 @@ s({trig = "tabl(%d+)x(%d+)", snippetType="autosnippet", regTrig = true, wordTrig
 	)
 ),
 
+-- Formatted Table
+s(
+	{ trig = "ftbl(%d+)x(%d+)", snippetType="autosnippet", regTrig = true, wordTrig=false, dscr = "formatted table" },
+	fmta(
+		[[
+		\begin{center}
+			\renewcommand{\arraystretch}{1.8}
+			\setlength{\arraycolsep}{10pt}
+			\begin{tabular}{|c||<>}
+				<>
+			\end{tabular}
+		\end{center}
+		]],
+		{
+			f(function(_, snip)
+				local cols = tonumber(snip.captures[2])
+				return string.rep("c|", cols - 1)
+			end),
+			d(1, generate_fmt_table),
+		}
+	)
+),
+
 -- Matrix
 s({trig = "([%sbBpvV])mat(%d+)x(%d+)", snippetType="autosnippet", regTrig = true, wordTrig=false, dscr = "[bBpvV]matrix of A x B size"},
 	fmta(
@@ -408,7 +490,7 @@ s({trig="cases", snippetType="snippet", desc="Cases environment"},
 		[[
 			\begin{cases}
 				<> & <> \\
-				<> & <> \\
+				<> & <> 
 			\end{cases}
 		]],
 		{i(1),i(2),i(3),i(4)}
@@ -425,7 +507,7 @@ s({trig="txt", snippetType="snippet", desc="text"},
 		[[
 			\text{<>}
 		]],
-		{visual_body(1)}
+		{i(1)}
 	)
 ),
 -- visual_body(i) includes highlighted text (in visual mode) into the snippet. But we should have an option for triggering 'txt' and directly writing in text.
@@ -438,7 +520,7 @@ s({trig="bf", snippetType="snippet", desc="boldface"},
 		[[
 			\textbf{<>}
 		]],
-		{visual_body(1)}
+		{i(1)}
 	)
 ),
 
@@ -448,7 +530,7 @@ s({trig="pmb", snippetType="snippet", desc="Poor Man's Bold"},
 		[[
 			\pmb{<>}
 		]],
-		{visual_body(1)}
+		{i(1)}
 	)
 ),
 
@@ -458,7 +540,7 @@ s({trig="it", snippetType="snippet", desc="Italics"},
 		[[
 			\textit{<>}
 		]],
-		{visual_body(1)}
+		{i(1)}
 	)
 ),
 
@@ -550,10 +632,9 @@ s({trig="codebk", snippetType="snippet", desc="Code block"},
 ----------------------
 
 --postfixes for vectors, hats, etc. The match pattern is '\\' plus the default (so that hats get put on greek letters,e.g.)
-postfix({trig="hat", match_pattern = [[[\\%w%.%_%-%"%']+$]], snippetType="autosnippet",dscr="postfix hat when in math mode"},
-	{l("\\hat{" .. l.POSTFIX_MATCH .. "}")}, 
-	{ condition=math }
-),
+postfix({trig=";hat", match_pattern = [[[\\%w%.%_%-%"%']+$]], snippetType="autosnippet", dscr="postfix hat"},
+    {l("\\hat{" .. l.POSTFIX_MATCH .. "}")
+}),
 
 ----------------
 -- DELIMITERS --
@@ -570,7 +651,7 @@ s({trig="parens", snippetType="snippet", desc="Parentheses"},
 ),
 
 -- Brackets
-s({trig="bra", snippetType="snippet", desc="Brackets"},
+s({trig="brack", snippetType="snippet", desc="Brackets"},
 	fmta(	
 		[[
 			\!\left[ <> \right]
@@ -822,7 +903,7 @@ s({trig="conj", snippetType="snippet", desc="Conjugate"},
 s({trig="sum", snippetType="snippet", desc="Sum"}, 
 	fmta(
 		[[
-			\sum_{<>}^{<>} <>
+			\sum^{<>}_{<>} <>
 		]],
 		{i(1),i(2),i(3)}
 	)
@@ -882,7 +963,7 @@ s({trig="iff", snippetType="snippet", desc="iff",wordTrig=false},
 s({trig="==", snippetType="snippet", desc="Equals (align)"},
 	fmta(
 		[[
-			&= <> \\
+			& = <> \\
 		]],
 		{i(1)}
 	)
@@ -891,6 +972,11 @@ s({trig="==", snippetType="snippet", desc="Equals (align)"},
 -- Not Equal
 s({trig="neq", snippetType="snippet", desc="Not Equal",wordTrig=false},
     {t("\\neq"),}
+),
+
+-- Definition
+s({trig="eqi", snippetType="snippet", desc="Not Equal",wordTrig=false},
+    {t("\\equiv"),}
 ),
 
 -- Less Than or Equal To
@@ -911,45 +997,6 @@ s({trig="lll", snippetType="snippet", desc="Curly l",wordTrig=false},
 -- Cross 
 s({trig="xx", snippetType="snippet", desc="Cross",wordTrig=false},
     {t("\\times"),}
-),
-
--- sin
-s({trig="sin", snippetType="snippet", desc="sine",wordTrig=false},
-    c(1,
-    	{
-    	sn(nil, fmta([[ \sin\!\left(<>\right) ]],{i(1)})),
-	sn(nil, fmta([[ \sin^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
-	}
-    )
-),
-
--- cos 
-s({trig="cos", snippetType="snippet", desc="cosine",wordTrig=false},
-    c(1,
-    	{
-    	sn(nil, fmta([[ \cos\!\left(<>\right) ]],{i(1)})),
-	sn(nil, fmta([[ \cos^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
-	}
-    )
-),
-
--- tan
-s({trig="tan", snippetType="snippet", desc="tangent",wordTrig=false},
-    c(1,
-    	{
-    	sn(nil, fmta([[ \tan\!\left(<>\right) ]],{i(1)})),
-	sn(nil, fmta([[ \tan^{<>}\!\left(<>\right) ]],{i(1),i(2)}))
-	}
-    )
-),
-
--- ln
-s({trig="ln", snippetType="snippet", desc="natural logarithm",wordTrig=false},
-    	fmta(
-		[[ 
-			\ln\!\left(<>\right) 
-		]],
-	{i(1)})
 ),
 
 -- Maps To
@@ -1025,6 +1072,26 @@ s({trig="dd", snippetType="snippet", desc="Derivative"},
 	)
 ),
 
+-- Second Derivative
+s({trig="dd2", snippetType="snippet", desc="Second Derivative"},
+    fmta(
+        [[
+            \frac{d^2 <>}{d <>^2}
+        ]],
+        {i(1), i(2)}
+    )
+),
+
+-- nth Derivative
+s({trig="ddn", snippetType="snippet", desc="nth Derivative"},
+    fmta(
+        [[
+            \frac{d^<> <>}{d <>^<>}
+        ]],
+        {i(1), i(2), i(3), rep(1)}
+    )
+),
+
 -- Partial Derivative
 s({trig="part", snippetType="snippet", desc="Partial Derivative"},
 	fmta(
@@ -1035,25 +1102,74 @@ s({trig="part", snippetType="snippet", desc="Partial Derivative"},
 	)
 ),
 
+-- Second Partial Derivative 
+s({trig="part2", snippetType="autosnippet", desc="Second Partial Derivative"},
+    fmta(
+        [[
+            \frac{\partial^2 <>}{\partial <>^2}
+        ]],
+        {i(1), i(2)}
+    )
+),
+
+-- nth Partial Derivative 
+s({trig="partn", snippetType="snippet", desc="nth Partial Derivative"},
+    fmta(
+        [[
+            \frac{\partial^<> <>}{\partial <>^<>}
+        ]],
+        {i(1), i(2), i(3), rep(1)}
+    )
+),
+
+-- Material Derivative 
+s({trig="matd", snippetType="snippet", desc="Material Derivative"},
+    fmta(
+        [[
+            \frac{D <>}{Dt}
+        ]],
+        {i(1)}
+    )
+),
+
+-- Material Derivative (expanded)
+s({trig="matdx", snippetType="snippet", desc="Material Derivative (Expanded)"},
+    fmta(
+        [[
+            \frac{\partial <>}{\partial t} + \!\left( <> \cdot \nabla \right) <>
+        ]],
+        {i(1), i(2, "\\pmb{u}"), rep(1)}
+    )
+),
+
 -- Integration
 -- Use as example for choice snippet
 s({trig="int", snippetType="snippet", desc="Integral"},
 			c(1,
 				{
-				sn(nil, fmta([[ \int_{-\infty}^{\infty} <> \, d<> ]],{i(1),i(2)})),
-				sn(nil, fmta([[ \int_{<>}^{<>} <> \, d<> ]],{i(1),i(2),i(3),i(4)}))
+				sn(nil, fmta([[ \int^{\infty}_{-\infty} <> \, d<> ]],{i(1),i(2)})),
+				sn(nil, fmta([[ \int^{<>}_{<>} <> \, d<> ]],{i(1),i(2),i(3),i(4)}))
 				}
 			)
 ),
 
--- Integration bounds
+-- Integration bounds, cycling with <C-n>/<C-m>: auto-sized bar around the
+-- term (visual selection becomes the term), then fixed \Big| and \bigg|
 s({trig="intb", snippetType="snippet", desc="Integral bounds"},
-	fmta(
-		[[
-			\Big|^{<>}_{<>}
-		]],
-		{i(1),i(2)}
-	)
+	c(1, {
+		sn(nil, fmta([[\left. <> \right|^{<>}_{<>}]], {
+			d(1, function(_, parent)
+				local sel = parent.snippet.env.LS_SELECT_RAW
+				if sel and #sel > 0 and table.concat(sel) ~= "" then
+					return sn(nil, t(sel))
+				end
+				return sn(nil, i(1))
+			end),
+			i(2), i(3),
+		})),
+		sn(nil, fmta([[\Big|^{<>}_{<>}]],  { i(1), i(2) })),
+		sn(nil, fmta([[\bigg|^{<>}_{<>}]], { i(1), i(2) })),
+	})
 ),
 
 -- Gradient
@@ -1066,15 +1182,24 @@ s({trig="grad", snippetType="snippet", desc="Gradient",wordTrig=false},
 --------------------
 
 -- Matrix Inverse
-s({trig="minv", snippetType="snippet", desc="Matrix Inverse",wordTrig=false},
-    {t("\\alpha"),}
+s({trig=";minv", snippetType="snippet", desc="Matrix Inverse",wordTrig=false},
+    {t("^{-1}"),}
 ),
 
 -- Matrix Transpose
-s({trig="tr", snippetType="snippet", desc="Matrix Transverse",wordTrig=false},
+s({trig=";tr", snippetType="snippet", desc="Matrix Transverse",wordTrig=false},
     {t("^{\\textsc{T}}"),}
 ),
 
+-- Determinant
+s({trig="det", snippetType="snippet", desc="Determinant with Vertical Bars"},
+    fmta(
+        [[
+            \det\!\left\lvert <> \right\rvert
+        ]],
+        {i(1)}
+    )
+),
 
 -----------------------
 -- SPECIAL FUNCTIONS --
@@ -1099,6 +1224,56 @@ s({trig="max", snippetType="snippet", desc="Max",wordTrig=false},
 		{i(1)}
 	)
 ),
+
+-- Trigonometric functions
+trig_snip("sin", "sine"),
+trig_snip("cos", "cosine"),
+trig_snip("tan", "tangent"),
+trig_snip("sec", "secant"),
+trig_snip("csc", "cosecant"),
+trig_snip("cot", "cotangent"),
+trig_snip("sinh", "hyperbolic sine"),
+trig_snip("cosh", "hyperbolic cosine"),
+
+-- Hyperbolic trigonometric functions
+
+-- Natural log: plain, squared, n-power
+s({ trig = "ln", snippetType = "snippet", desc = "natural log", wordTrig = false },
+c(1, {
+sn(nil, fmta([[\ln\!\left(<>\right)]],      { i(1) })),
+sn(nil, fmta([[\ln^{2}\!\left(<>\right)]],  { i(1) })),
+sn(nil, fmta([[\ln^{<>}\!\left(<>\right)]], { i(1), i(2) })),
+})
+),
+
+-- Log: arbitrary base first, then plain, then base 2
+s({ trig = "log", snippetType = "snippet", desc = "logarithm", wordTrig = false },
+c(1, {
+sn(nil, fmta([[\log_{<>}\!\left(<>\right)]], { i(1), i(2) })),
+sn(nil, fmta([[\log\!\left(<>\right)]],      { i(1) })),
+sn(nil, fmta([[\log_{2}\!\left(<>\right)]],  { i(1) })),
+})
+),
+
+----------------
+-- TRANSFORMS --
+----------------
+
+-- Laplace
+s({trig="lt", snippetType="snippet", desc="Laplace transform",wordTrig=false},
+    fmta(
+	[[
+		\mathcal{L}\!\left[ <> \right]
+	]],
+	{i(1)}
+    )
+),
+
+-- Convolution
+s({trig="conv", snippetType="snippet", desc="Convolution",wordTrig=false},
+    {t("\\circledast"),}
+),
+
 
 ------------
 -- ARROWS --
@@ -1343,9 +1518,119 @@ s({trig="uni", snippetType="snippet", desc="Uniform",wordTrig=false},
 	)
 ),
 
+-------------
+-- PHYSICS --
+-------------
+
+-- Bra-ket notation requires \usepackage{braket}.
+
+-- Bra
+s({trig="bra", snippetType="snippet", desc="Bra"},
+	fmta(
+		[[
+			\bra{<>}
+		]],
+		{i(1)}
+	)
+),
+
+-- Ket
+s({trig="ket", snippetType="snippet", desc="Ket"},
+	fmta(
+		[[
+			\ket{<>}
+		]],
+		{i(1)}
+	)
+),
+
+-- Inner Product
+s({trig="brkt", snippetType="snippet", desc="Bra-Ket Inner Product"},
+	fmta(
+		[[
+			\braket{<> | <>}
+		]],
+		{i(1),i(2)}
+	)
+),
+
+-- Matrix Element
+s({trig="mel", snippetType="snippet", desc="Matrix Element"},
+	fmta(
+		[[
+			\braket{<> | <> | <>}
+		]],
+		{i(1),i(2),i(3)}
+	)
+),
+
+-- Expectation Value
+s({trig="expv", snippetType="snippet", desc="Expectation Value"},
+	fmta(
+		[[
+			\braket{<>}
+		]],
+		{i(1)}
+	)
+),
+
+-- Bra-Ket, cycling with <C-n>/<C-m>: no divider, inner product, matrix element
+s({trig="bk", snippetType="snippet", desc="Bra-Ket (cycle forms)"},
+	c(1, {
+		sn(nil, fmta([[\braket{<>}]],               { i(1) })),             -- <psi>
+		sn(nil, fmta([[\braket{<> | <>}]],          { i(1), i(2) })),       -- <phi|psi>
+		sn(nil, fmta([[\braket{<> | <> | <>}]],     { i(1), i(2), i(3) })), -- <phi|A|psi>
+	})
+),
+
+-- Outer Product
+s({trig="outer", snippetType="snippet", desc="Outer Product"},
+	fmta(
+		[[
+			\ket{<>}\bra{<>}
+		]],
+		{i(1),i(2)}
+	)
+),
+
 -----------
 -- GREEK --
 -----------
+
+-- LuaSnip expands the first matching trigger in file order, and these end in
+-- another Greek trigger (vphi/phi, zeta/eta, ...), so they must come first.
+
+s({trig="veps", snippetType="snippet", desc="varepsilon",wordTrig=false},
+    {t("\\varepsilon"),}
+),
+
+s({trig="vth", snippetType="snippet", desc="vartheta",wordTrig=false},
+    {t("\\vartheta"),}
+),
+
+s({trig="vphi", snippetType="snippet", desc="varphi",wordTrig=false},
+    {t("\\varphi"),}
+),
+
+s({trig="vpi", snippetType="snippet", desc="varpi",wordTrig=false},
+    {t("\\varpi"),}
+),
+
+s({trig="vrho", snippetType="snippet", desc="varrho",wordTrig=false},
+    {t("\\varrho"),}
+),
+
+s({trig="vsig", snippetType="snippet", desc="varsigma",wordTrig=false},
+    {t("\\varsigma"),}
+),
+
+s({trig="zeta", snippetType="snippet", desc="zeta",wordTrig=false},
+    {t("\\zeta"),}
+),
+
+s({trig="Theta", snippetType="snippet", desc="Theta",wordTrig=false},
+    {t("\\Theta"),}
+),
 
 s({trig="alp", snippetType="snippet", desc="alpha",wordTrig=false},
     {t("\\alpha"),}
@@ -1411,6 +1696,10 @@ s({trig="psi", snippetType="snippet", desc="psi",wordTrig=false},
     {t("\\psi"),}
 ),
 
+s({trig="Psi", snippetType="snippet", desc="Psi",wordTrig=false},
+    {t("\\Psi"),}
+),
+
 s({trig="rho", snippetType="snippet", desc="rho",wordTrig=false},
     {t("\\rho"),}
 ),
@@ -1429,6 +1718,47 @@ s({trig="tau", snippetType="snippet", desc="tau",wordTrig=false},
 
 s({trig="theta", snippetType="snippet", desc="theta",wordTrig=false},
     {t("\\theta"),}
+),
+
+-- after beta, zeta, theta and Theta, which all end in "eta"
+s({trig="eta", snippetType="snippet", desc="eta",wordTrig=false},
+    {t("\\eta"),}
+),
+
+s({trig="iota", snippetType="snippet", desc="iota",wordTrig=false},
+    {t("\\iota"),}
+),
+
+s({trig="kap", snippetType="snippet", desc="kappa",wordTrig=false},
+    {t("\\kappa"),}
+),
+
+s({trig="nu", snippetType="snippet", desc="nu",wordTrig=false},
+    {t("\\nu"),}
+),
+
+s({trig="xi", snippetType="snippet", desc="xi",wordTrig=false},
+    {t("\\xi"),}
+),
+
+s({trig="Xi", snippetType="snippet", desc="Xi",wordTrig=false},
+    {t("\\Xi"),}
+),
+
+s({trig="Pi", snippetType="snippet", desc="Pi",wordTrig=false},
+    {t("\\Pi"),}
+),
+
+s({trig="ups", snippetType="snippet", desc="upsilon",wordTrig=false},
+    {t("\\upsilon"),}
+),
+
+s({trig="Ups", snippetType="snippet", desc="Upsilon",wordTrig=false},
+    {t("\\Upsilon"),}
+),
+
+s({trig="chi", snippetType="snippet", desc="chi",wordTrig=false},
+    {t("\\chi"),}
 ),
 
 ---------------
