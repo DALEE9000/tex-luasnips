@@ -1522,7 +1522,7 @@ s({trig="uni", snippetType="snippet", desc="Uniform",wordTrig=false},
 -- PHYSICS --
 -------------
 
--- Bra-ket notation requires \usepackage{braket}.
+-- Bra-ket notation requires \usepackage{braket}. headerintroquantummechanics.tex makes plain \bra, \ket, \braket autosize (starred: fixed).
 
 -- Bra
 s({trig="bra", snippetType="snippet", desc="Bra"},
@@ -1591,6 +1591,11 @@ s({trig="outer", snippetType="snippet", desc="Outer Product"},
 		]],
 		{i(1),i(2)}
 	)
+),
+
+-- Reduced Planck Constant
+s({trig="hbar", snippetType="snippet", desc="Reduced Planck Constant",wordTrig=false},
+    {t("\\hbar"),}
 ),
 
 -----------
