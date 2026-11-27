@@ -1148,7 +1148,8 @@ s({trig="int", snippetType="snippet", desc="Integral"},
 			c(1,
 				{
 				sn(nil, fmta([[ \int^{\infty}_{-\infty} <> \, d<> ]],{i(1),i(2)})),
-				sn(nil, fmta([[ \int^{<>}_{<>} <> \, d<> ]],{i(1),i(2),i(3),i(4)}))
+				sn(nil, fmta([[ \int^{<>}_{<>} <> \, d<> ]],{i(1),i(2),i(3),i(4)})),
+				sn(nil, fmta([[ \int <> \, d<> ]],{i(1),i(2)}))
 				}
 			)
 ),
